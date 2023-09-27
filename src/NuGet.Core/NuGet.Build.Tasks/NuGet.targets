@@ -1093,11 +1093,11 @@ Copyright (c) .NET Foundation. All rights reserved.
 
     <!-- Get the absolute paths to all projects -->
     <ConvertToAbsolutePath Paths="@(ProjectReference)">
-      <Output TaskParameter="AbsolutePaths" PropertyName="_RestoreGraphAbsoluteProjectPaths" />
+      <Output TaskParameter="AbsolutePaths" ItemName="_RestoreGraphAbsoluteProjectPaths" />
     </ConvertToAbsolutePath>
 
     <ItemGroup>
-      <_RestoreProjectPathItems Include="$(_RestoreGraphAbsoluteProjectPaths)" />
+      <_RestoreProjectPathItems Include="@(_RestoreGraphAbsoluteProjectPaths)" />
     </ItemGroup>
   </Target>
 
@@ -1258,20 +1258,12 @@ Copyright (c) .NET Foundation. All rights reserved.
           ItemName="_RestoreProjectPathItemsOutputs" />
     </MSBuild>
 
-    <!-- Remove duplicates -->
-    <RemoveDuplicates
-      Inputs="@(_RestoreProjectPathItemsOutputs)">
-      <Output
-          TaskParameter="Filtered"
-          ItemName="_RestoreProjectPathItemsWithoutDupes" />
-    </RemoveDuplicates>
-
     <!-- Remove projects that do not support restore. -->
     <!-- With SkipNonexistentTargets -->
     <MSBuild
         Condition=" '$(RestoreUseSkipNonexistentTargets)' == 'true' "
         BuildInParallel="$(RestoreBuildInParallel)"
-        Projects="@(_RestoreProjectPathItemsWithoutDupes)"
+        Projects="@(_RestoreProjectPathItemsOutputs)"
         Targets="_IsProjectRestoreSupported"
         SkipNonexistentTargets="true"
         SkipNonexistentProjects="true"
@@ -1285,7 +1277,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     <!-- Without SkipNonexistentTargets -->
     <MSBuild
       Condition=" '$(RestoreUseSkipNonexistentTargets)' != 'true' "
-      Projects="@(_RestoreProjectPathItemsWithoutDupes)"
+      Projects="@(_RestoreProjectPathItemsOutputs)"
       Targets="_IsProjectRestoreSupported"
       ContinueOnError="$(RestoreContinueOnError)"
       Properties="$(_GenerateRestoreGraphProjectEntryInputProperties)">
