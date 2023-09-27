@@ -497,7 +497,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     <ItemGroup Condition=" '$(RestoreProjects)' == '' OR '$(RestoreProjects)' == 'true' ">
       <_RestoreGraphEntry Include="$([System.Guid]::NewGuid())" Condition=" '$(RestoreProjectStyle)' != 'Unknown' ">
         <Type>RestoreSpec</Type>
-        <ProjectUniqueName>$(MSBuildProjectFullPath)</ProjectUniqueName>
+        <ProjectUniqueName>$(_RestoreProjectUniqueName)</ProjectUniqueName>
       </_RestoreGraphEntry>
     </ItemGroup>
   </Target>
@@ -586,6 +586,25 @@ Copyright (c) .NET Foundation. All rights reserved.
     <PropertyGroup>
       <_HasPackageReferenceItems />
     </PropertyGroup>
+
+    <!--
+      Determine project name for the assets file.
+      Highest priority: PackageId
+      If PackageId does not exist use: AssemblyName
+      If AssemblyName does not exist fallback to the project file name without the extension: $(MSBuildProjectName)
+
+      For non-PackageReference projects use only: $(MSBuildProjectName)
+    -->
+    <PropertyGroup>
+      <_RestoreProjectName>$(MSBuildProjectName)</_RestoreProjectName>
+      <_RestoreProjectName Condition=" '$(PackageReferenceCompatibleProjectStyle)' == 'true' AND '$(AssemblyName)' != '' ">$(AssemblyName)</_RestoreProjectName>
+      <_RestoreProjectName Condition=" '$(PackageReferenceCompatibleProjectStyle)' == 'true' AND '$(PackageId)' != '' ">$(PackageId)</_RestoreProjectName>
+    </PropertyGroup>
+
+    <PropertyGroup>
+      <_RestoreProjectUniqueName>$(MSBuildProjectFullPath),$(_RestoreProjectName)</_RestoreProjectUniqueName>
+    </PropertyGroup>
+    
   </Target>
 
   <!--
@@ -677,7 +696,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     </PropertyGroup>
     <!-- For transitive project styles, we rely on evaluating all the settings and including them in the dg spec to faciliate no-op restore-->
     <GetRestoreSettingsTask
-      ProjectUniqueName="$(MSBuildProjectFullPath)"
+      ProjectUniqueName="$(_RestoreProjectUniqueName)"
       RestoreSources="$(RestoreSources)"
       RestorePackagesPath="$(RestorePackagesPath)"
       RestoreRepositoryPath="$(RestoreRepositoryPath)"
@@ -785,20 +804,6 @@ Copyright (c) .NET Foundation. All rights reserved.
     </ConvertToAbsolutePath>
 
     <!--
-      Determine project name for the assets file.
-      Highest priority: PackageId
-      If PackageId does not exist use: AssemblyName
-      If AssemblyName does not exist fallback to the project file name without the extension: $(MSBuildProjectName)
-
-      For non-PackageReference projects use only: $(MSBuildProjectName)
-    -->
-    <PropertyGroup>
-      <_RestoreProjectName>$(MSBuildProjectName)</_RestoreProjectName>
-      <_RestoreProjectName Condition=" '$(PackageReferenceCompatibleProjectStyle)' == 'true' AND '$(AssemblyName)' != '' ">$(AssemblyName)</_RestoreProjectName>
-      <_RestoreProjectName Condition=" '$(PackageReferenceCompatibleProjectStyle)' == 'true' AND '$(PackageId)' != '' ">$(PackageId)</_RestoreProjectName>
-    </PropertyGroup>
-
-    <!--
       Determine project version for .NETCore projects
       Default to 1.0.0
       Use Version if it exists
@@ -825,7 +830,7 @@ Copyright (c) .NET Foundation. All rights reserved.
       <_RestoreGraphEntry Include="$([System.Guid]::NewGuid())">
         <Type>ProjectSpec</Type>
         <Version>$(_RestoreProjectVersion)</Version>
-        <ProjectUniqueName>$(MSBuildProjectFullPath)</ProjectUniqueName>
+        <ProjectUniqueName>$(_RestoreProjectUniqueName)</ProjectUniqueName>
         <ProjectPath>$(MSBuildProjectFullPath)</ProjectPath>
         <ProjectName>$(_RestoreProjectName)</ProjectName>
         <Sources>$(_OutputSources)</Sources>
@@ -860,7 +865,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     <ItemGroup Condition=" '$(RestoreProjectStyle)' == 'ProjectJson' ">
       <_RestoreGraphEntry Include="$([System.Guid]::NewGuid())">
         <Type>ProjectSpec</Type>
-        <ProjectUniqueName>$(MSBuildProjectFullPath)</ProjectUniqueName>
+        <ProjectUniqueName>$(_RestoreProjectUniqueName)</ProjectUniqueName>
         <ProjectPath>$(MSBuildProjectFullPath)</ProjectPath>
         <ProjectName>$(_RestoreProjectName)</ProjectName>
         <Sources>$(_OutputSources)</Sources>
@@ -877,7 +882,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     <ItemGroup Condition=" '$(RestoreProjectStyle)' == 'PackagesConfig' ">
       <_RestoreGraphEntry Include="$([System.Guid]::NewGuid())">
         <Type>ProjectSpec</Type>
-        <ProjectUniqueName>$(MSBuildProjectFullPath)</ProjectUniqueName>
+        <ProjectUniqueName>$(_RestoreProjectUniqueName)</ProjectUniqueName>
         <ProjectPath>$(MSBuildProjectFullPath)</ProjectPath>
         <ProjectName>$(_RestoreProjectName)</ProjectName>
         <ProjectStyle>$(RestoreProjectStyle)</ProjectStyle>
@@ -899,7 +904,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     <ItemGroup Condition=" '$(RestoreProjectStyle)' == 'Unknown' ">
       <_RestoreGraphEntry Include="$([System.Guid]::NewGuid())">
         <Type>ProjectSpec</Type>
-        <ProjectUniqueName>$(MSBuildProjectFullPath)</ProjectUniqueName>
+        <ProjectUniqueName>$(_RestoreProjectUniqueName)</ProjectUniqueName>
         <ProjectPath>$(MSBuildProjectFullPath)</ProjectPath>
         <ProjectName>$(_RestoreProjectName)</ProjectName>
         <ProjectStyle>$(RestoreProjectStyle)</ProjectStyle>
@@ -985,7 +990,7 @@ Copyright (c) .NET Foundation. All rights reserved.
 
     <!-- Write out project references -->
     <GetRestoreProjectReferencesTask
-      ProjectUniqueName="$(MSBuildProjectFullPath)"
+      ProjectUniqueName="$(_RestoreProjectUniqueName)"
       ProjectReferences="@(ProjectReference)"
       TargetFrameworks="$(TargetFramework)"
       ParentProjectPath="$(MSBuildProjectFullPath)">
@@ -998,7 +1003,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     <!-- Write out package references-->
     <GetRestorePackageReferencesTask
       Condition=" '$(PackageReferenceCompatibleProjectStyle)' == 'true' "
-      ProjectUniqueName="$(MSBuildProjectFullPath)"
+      ProjectUniqueName="$(_RestoreProjectUniqueName)"
       PackageReferences="@(PackageReference)"
       TargetFrameworks="$(TargetFramework)"
       >
@@ -1011,7 +1016,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     <!-- Write out central package versions -->
     <GetCentralPackageVersionsTask
       Condition=" '$(PackageReferenceCompatibleProjectStyle)' == 'true' AND '$(_CentralPackageVersionsEnabled)' == 'true' "
-      ProjectUniqueName="$(MSBuildProjectFullPath)"
+      ProjectUniqueName="$(_RestoreProjectUniqueName)"
       CentralPackageVersions="@(PackageVersion)"
       TargetFrameworks="$(TargetFramework)"
       >
@@ -1024,7 +1029,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     <!-- Write out package downloads -->
     <GetRestorePackageDownloadsTask
       Condition=" '$(PackageReferenceCompatibleProjectStyle)' == 'true' "
-      ProjectUniqueName="$(MSBuildProjectFullPath)"
+      ProjectUniqueName="$(_RestoreProjectUniqueName)"
       PackageDownloads="@(PackageDownload)"
       TargetFrameworks="$(TargetFramework)"
       >
@@ -1037,7 +1042,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     <!-- Write out Framework References-->
     <GetRestoreFrameworkReferencesTask
       Condition=" '$(PackageReferenceCompatibleProjectStyle)' == 'true' "
-      ProjectUniqueName="$(MSBuildProjectFullPath)"
+      ProjectUniqueName="$(_RestoreProjectUniqueName)"
       FrameworkReferences="@(FrameworkReference)"
       TargetFrameworks="$(TargetFramework)"
       >
@@ -1051,7 +1056,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     <ItemGroup Condition="  '$(PackageReferenceCompatibleProjectStyle)' == 'true'">
       <_RestoreGraphEntry Include="$([System.Guid]::NewGuid())">
         <Type>TargetFrameworkInformation</Type>
-        <ProjectUniqueName>$(MSBuildProjectFullPath)</ProjectUniqueName>
+        <ProjectUniqueName>$(_RestoreProjectUniqueName)</ProjectUniqueName>
         <PackageTargetFallback>$(PackageTargetFallback)</PackageTargetFallback>
         <AssetTargetFallback>$(AssetTargetFallback)</AssetTargetFallback>
         <TargetFramework>$(TargetFramework)</TargetFramework>
